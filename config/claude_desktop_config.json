@@ -1,0 +1,46 @@
+{
+  "_readme": [
+    "Two ways to connect Claude Desktop to this MCP server:",
+    "",
+    "OPTION A — HTTP (server runs separately, Claude connects over network):",
+    "  1. Start the server:  python -m src.server",
+    "  2. Use the mcpServers block under 'http_client' below.",
+    "",
+    "OPTION B — stdio (Claude Desktop spawns the process locally):",
+    "  Use the mcpServers block under 'stdio' below."
+  ],
+
+  "_OPTION_A_HTTP_paste_this_into_claude_desktop_config": {
+    "mcpServers": {
+      "local-repo-db": {
+        "url": "http://localhost:8000/sse",
+        "headers": {
+          "Authorization": "Bearer change-me-to-a-strong-secret"
+        }
+      }
+    }
+  },
+
+  "_OPTION_B_stdio_paste_this_into_claude_desktop_config": {
+    "mcpServers": {
+      "local-repo-db": {
+        "command": "python",
+        "args": ["-m", "src.server"],
+        "cwd": "/ABSOLUTE/PATH/TO/mcp-server",
+        "env": {
+          "MCP_TRANSPORT":         "stdio",
+          "REPO_ROOT":             "/absolute/path/to/your/repo",
+          "DB_TYPE":               "mysql",
+          "DB_MAX_ROWS":           "500",
+          "MYSQL_HOST":            "your-remote-server.com",
+          "MYSQL_PORT":            "3306",
+          "MYSQL_DB":              "your_database_name",
+          "MYSQL_USER":            "your_mysql_user",
+          "MYSQL_PASSWORD":        "your_mysql_password",
+          "MYSQL_CONNECT_TIMEOUT": "10",
+          "MYSQL_SSL":             "false"
+        }
+      }
+    }
+  }
+}
