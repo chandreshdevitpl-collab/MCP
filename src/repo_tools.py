@@ -1,27 +1,31 @@
 """
 repo_tools.py — FastMCP tools for reading a local repository.
 
-All paths are sandboxed inside the root configured by the environment
-variable REPO_ROOT (defaults to the current working directory).
+All paths are sandboxed inside the calling client's project root, resolved
+the same way db_tools resolves it (see db_tools._project_root):
+  - HTTP transport: the 'X-Project-Root' header on the request.
+  - stdio transport: the REPO_ROOT environment variable.
+There is deliberately no cwd-based fallback — see db_tools._project_root
+for why.
 """
 
 from __future__ import annotations
 
-import os
 import subprocess
 from pathlib import Path
 from typing import Optional
 
 from fastmcp import FastMCP
 
+from .db_tools import _project_root
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 def _repo_root() -> Path:
-    """Return the sandboxed repository root."""
-    root = os.environ.get("REPO_ROOT", os.getcwd())
-    return Path(root).resolve()
+    """Return the sandboxed repository root (the client project root)."""
+    return _project_root()
 
 
 def _safe_path(relative: str) -> Path:
