@@ -1,21 +1,37 @@
 {
   "_readme": [
-    "Two ways to connect Claude Desktop to this MCP server:",
+    "Two ways to connect a client to this MCP server:",
     "",
-    "OPTION A — HTTP (server runs separately, Claude connects over network):",
-    "  1. Start the server:  python -m src.server",
-    "  2. Use the mcpServers block under 'http_client' below.",
+    "OPTION A — HTTP (one shared server, many projects):",
+    "  1. Start the server once:  python -m src.server",
+    "  2. Each project points at the SAME url and sends its own",
+    "     'X-Project-Root' header — the server reads DB_HOST/DB_PORT/",
+    "     DB_USER/DB_PASSWORD/DB_NAME (or legacy MYSQL_*) from THAT",
+    "     project's own .env for every request. The server's own .env is",
+    "     never used for database credentials.",
+    "  3. Adding a new project requires zero changes to the MCP server —",
+    "     just point a new client entry at the same url with its own",
+    "     X-Project-Root header.",
     "",
-    "OPTION B — stdio (Claude Desktop spawns the process locally):",
-    "  Use the mcpServers block under 'stdio' below."
+    "OPTION B — stdio (client spawns one process per project):",
+    "  Set 'cwd' (or REPO_ROOT) to the project root; the server loads",
+    "  that project's .env the same way, no X-Project-Root header needed."
   ],
 
   "_OPTION_A_HTTP_paste_this_into_claude_desktop_config": {
     "mcpServers": {
-      "local-repo-db": {
+      "impacct-backend": {
         "url": "http://localhost:8000/sse",
         "headers": {
-          "Authorization": "Bearer change-me-to-a-strong-secret"
+          "Authorization": "Bearer change-me-to-a-strong-secret",
+          "X-Project-Root": "/absolute/path/to/Impacct_Backend"
+        }
+      },
+      "crm-backend": {
+        "url": "http://localhost:8000/sse",
+        "headers": {
+          "Authorization": "Bearer change-me-to-a-strong-secret",
+          "X-Project-Root": "/absolute/path/to/CRM_Backend"
         }
       }
     }
@@ -23,22 +39,13 @@
 
   "_OPTION_B_stdio_paste_this_into_claude_desktop_config": {
     "mcpServers": {
-      "local-repo-db": {
+      "impacct-backend": {
         "command": "python",
         "args": ["-m", "src.server"],
         "cwd": "/ABSOLUTE/PATH/TO/mcp-server",
         "env": {
-          "MCP_TRANSPORT":         "stdio",
-          "REPO_ROOT":             "/absolute/path/to/your/repo",
-          "DB_TYPE":               "mysql",
-          "DB_MAX_ROWS":           "500",
-          "MYSQL_HOST":            "your-remote-server.com",
-          "MYSQL_PORT":            "3306",
-          "MYSQL_DB":              "your_database_name",
-          "MYSQL_USER":            "your_mysql_user",
-          "MYSQL_PASSWORD":        "your_mysql_password",
-          "MYSQL_CONNECT_TIMEOUT": "10",
-          "MYSQL_SSL":             "false"
+          "MCP_TRANSPORT": "stdio",
+          "REPO_ROOT":     "/absolute/path/to/Impacct_Backend"
         }
       }
     }

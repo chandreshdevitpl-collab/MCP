@@ -43,8 +43,12 @@ pip install fastmcp mcp uvicorn starlette mysql-connector-python
 
 ```bash
 cp .env.example .env
-# Edit .env — fill in MYSQL_HOST, MYSQL_DB, MYSQL_USER, MYSQL_PASSWORD, REPO_ROOT
+# Edit .env — fill in MCP_TRANSPORT, MCP_HOST, MCP_PORT, MCP_API_KEY
 ```
+
+> **Note:** the server's own `.env` no longer holds database credentials.
+> Every query runs against the *target project's* database — see
+> [Multi-Project Database Access](#-multi-project-database-access) below.
 
 ### 3 — Run the HTTP server
 
@@ -73,20 +77,34 @@ curl -H "Authorization: Bearer your-api-key" http://localhost:8000/sse
 
 ## 🔗 Connecting Clients
 
-### Claude Desktop (HTTP — recommended)
+### Claude Desktop / Cursor (HTTP — one shared server, many projects)
 
-In `claude_desktop_config.json`:
+Every project sends its own `X-Project-Root` header alongside the same `url`.
+The server loads that project's `.env` (never its own) for every DB call —
+see [Multi-Project Database Access](#-multi-project-database-access).
+
 ```json
 {
   "mcpServers": {
-    "local-repo-db": {
-      "url": "http://localhost:8000/sse"
+    "impacct-backend": {
+      "url": "http://localhost:8000/sse",
+      "headers": {
+        "Authorization": "Bearer change-me-to-a-strong-secret",
+        "X-Project-Root": "/absolute/path/to/Impacct_Backend"
+      }
+    },
+    "crm-backend": {
+      "url": "http://localhost:8000/sse",
+      "headers": {
+        "Authorization": "Bearer change-me-to-a-strong-secret",
+        "X-Project-Root": "/absolute/path/to/CRM_Backend"
+      }
     }
   }
 }
 ```
 
-### Claude Desktop (stdio — alternative, no separate server needed)
+### Claude Desktop (stdio — one process per project, no separate server)
 
 ```json
 {
@@ -97,16 +115,40 @@ In `claude_desktop_config.json`:
       "cwd": "/absolute/path/to/mcp-server",
       "env": {
         "MCP_TRANSPORT": "stdio",
-        "REPO_ROOT": "/path/to/repo",
-        "DB_TYPE": "mysql",
-        "MYSQL_HOST": "your-server.com",
-        "MYSQL_DB": "mydb",
-        "MYSQL_USER": "user",
-        "MYSQL_PASSWORD": "secret"
+        "REPO_ROOT": "/path/to/your/project"
       }
     }
   }
 }
+```
+
+In stdio mode there's no per-request header, so the server falls back to
+`REPO_ROOT` (or `cwd`) to find the project — same DB-config resolution
+either way, just a different way of pointing at the project.
+
+---
+
+## 🗄️ Multi-Project Database Access
+
+Database credentials are **never** read from this MCP server's own `.env`.
+On every DB tool call, the server:
+
+1. Resolves the *target project* — from the request's `X-Project-Root`
+   header (HTTP), or `REPO_ROOT`/`cwd` (stdio).
+2. Loads that project's own `.env` (`.env`, `.env.<APP_ENV>`, `.env.local`,
+   `.env.<APP_ENV>.local` — later files override earlier ones).
+3. Reads `DB_HOST` / `DB_PORT` / `DB_USER` / `DB_PASSWORD` / `DB_NAME` from
+   it (legacy `MYSQL_*` names are also accepted).
+4. Opens a brand-new connection, runs the query, and always closes the
+   connection — nothing is cached or reused across projects or requests.
+
+Connecting a new project requires **no changes to the MCP server** — just
+point a new client entry at it with its own `X-Project-Root` (or `cwd`).
+
+```
+Impacct Backend/.env  → DB_NAME=impacct_db   ─┐
+CRM Backend/.env      → DB_NAME=crm_db        ├─▶ same running MCP server
+ERP Backend/.env      → DB_NAME=erp_db       ─┘
 ```
 
 ---
@@ -152,24 +194,37 @@ In `claude_desktop_config.json`:
 
 | Variable | Default | Description |
 |---|---|---|
-| `REPO_ROOT` | `cwd` | Absolute path to local repository |
+| `REPO_ROOT` | `cwd` | Absolute path to local repository; also the stdio-mode fallback for locating a project's database `.env` |
 
-### MySQL
+### Database (read from the **target project's** `.env`, never the server's own)
+
+Set these in the project you're connecting to, not in this server's `.env`.
+`MYSQL_*` names are also accepted for backward compatibility.
 
 | Variable | Required | Description |
 |---|---|---|
-| `MYSQL_HOST` | ✅ | Remote server hostname or IP |
-| `MYSQL_PORT` | `3306` | MySQL port |
-| `MYSQL_DB` | ✅ | Database / schema name |
-| `MYSQL_USER` | ✅ | MySQL username |
-| `MYSQL_PASSWORD` | ✅ | MySQL password |
-| `MYSQL_CONNECT_TIMEOUT` | `10` | Seconds before timeout |
-| `MYSQL_CHARSET` | `utf8mb4` | Character set |
-| `MYSQL_SSL` | `false` | `"true"` to enable TLS |
-| `MYSQL_SSL_CA` | — | CA certificate path (PEM) |
-| `MYSQL_SSL_CERT` | — | Client certificate (mutual TLS) |
-| `MYSQL_SSL_KEY` | — | Client private key (mutual TLS) |
-| `MYSQL_SSL_VERIFY_CERT` | `true` | `"false"` to skip cert check |
+| `DB_HOST` | ✅ | Remote server hostname or IP |
+| `DB_PORT` | `3306` | MySQL port |
+| `DB_NAME` | ✅ | Database / schema name |
+| `DB_USER` | ✅ | MySQL username |
+| `DB_PASSWORD` | ✅ | MySQL password |
+| `DB_CONNECT_TIMEOUT` | `10` | Seconds before timeout |
+| `DB_CHARSET` | `utf8mb4` | Character set |
+| `DB_SSL` | `false` | `"true"` to enable TLS |
+| `DB_SSL_CA` | — | CA certificate path (PEM) |
+| `DB_SSL_CERT` | — | Client certificate (mutual TLS) |
+| `DB_SSL_KEY` | — | Client private key (mutual TLS) |
+| `DB_SSL_VERIFY_CERT` | `true` | `"false"` to skip cert check |
+
+### Request-level routing (HTTP transport)
+
+| Header | Required | Description |
+|---|---|---|
+| `X-Project-Root` | ✅ (HTTP, multi-project) | Absolute path to the target project's root — where its `.env` lives |
+
+`DB_MAX_ROWS` (default `500`) is the one DB-related setting that **is** read
+from the MCP server's own `.env` — it's a server-side safety cap, not a
+credential.
 
 ---
 
@@ -179,6 +234,7 @@ In `claude_desktop_config.json`:
 - **Path sandboxing:** all file paths checked against `REPO_ROOT`; traversal attacks rejected
 - **Bearer token auth:** set `MCP_API_KEY` to protect the HTTP endpoint
 - **No secrets in responses:** `db_info` never returns passwords
+- **No cross-project leakage:** DB config is resolved fresh per request from the target project's own `.env` and never cached or shared across projects
 
 ---
 
@@ -196,14 +252,14 @@ CMD ["python", "-m", "src.server"]
 ```bash
 docker build -t mcp-server .
 docker run -p 8000:8000 \
-  -e MYSQL_HOST=your-server.com \
-  -e MYSQL_DB=mydb \
-  -e MYSQL_USER=user \
-  -e MYSQL_PASSWORD=secret \
-  -e REPO_ROOT=/app/repo \
+  -v /path/to/your/projects:/projects:ro \
   -e MCP_API_KEY=strong-secret \
   mcp-server
 ```
+
+Database credentials aren't passed to the container — each client request's
+`X-Project-Root` header points at a project directory under the mounted
+`/projects` volume, and the server reads that project's own `.env` from there.
 
 ---
 

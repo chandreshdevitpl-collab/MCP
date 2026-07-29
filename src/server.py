@@ -23,7 +23,14 @@ from fastmcp import FastMCP
 
 
 def _load_env_file() -> None:
-    """Load environment variables from the project .env file if present."""
+    """
+    Load infra-level environment variables (MCP_*, REPO_ROOT, ...) from the
+    server's own .env file, if present.
+
+    Database credentials (DB_* / MYSQL_*) are deliberately never loaded here
+    — db_tools resolves those per-request from the *target project's* own
+    .env (see src/env_utils.py), never from this server's config.
+    """
     root = Path(__file__).resolve().parent.parent
     env_path = root / ".env"
     if not env_path.exists():
@@ -39,7 +46,8 @@ def _load_env_file() -> None:
             key, value = raw.split("=", 1)
             key = key.strip()
             value = value.strip()
-            if not key:
+            is_db_credential = key.startswith(("DB_", "MYSQL_")) and key != "DB_MAX_ROWS"
+            if not key or is_db_credential:
                 continue
             if ((value.startswith('"') and value.endswith('"')) or
                     (value.startswith("'") and value.endswith("'"))):
