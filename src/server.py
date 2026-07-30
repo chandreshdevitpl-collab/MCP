@@ -58,6 +58,7 @@ from .db_tools   import register_db_tools
 # ---------------------------------------------------------------------------
 logging.basicConfig(
     level=logging.INFO,
+    stream=sys.stderr,
     format="%(asctime)s  %(levelname)-8s  %(name)s — %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
 )
@@ -81,7 +82,7 @@ def main() -> None:
     transport = os.environ.get("MCP_TRANSPORT", "http").lower()
 
     if transport == "stdio":
-        log.info("Starting MCP server — transport: stdio")
+        # log.info("Starting MCP server — transport: stdio")
         mcp.run(transport="stdio")
 
     else:
@@ -103,9 +104,9 @@ def main() -> None:
         try:
             import uvicorn
         except ImportError:
-            log.error(
-                "uvicorn is not installed. Run:  pip install uvicorn"
-            )
+            # log.error(
+            #     "uvicorn is not installed. Run:  pip install uvicorn"
+            # )
             sys.exit(1)
 
         uvicorn.run(

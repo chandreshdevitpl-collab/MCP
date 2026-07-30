@@ -7,7 +7,12 @@
     "  2. Use the mcpServers block under 'http_client' below.",
     "",
     "OPTION B — stdio (Claude Desktop spawns the process locally):",
-    "  Use the mcpServers block under 'stdio' below."
+    "  Use the mcpServers block under 'stdio' below.",
+    "",
+    "For Claude Desktop on Windows, config file is at:",
+    "  %APPDATA%\\Claude\\claude_desktop_config.json",
+    "",
+    "For Claude Code (CLI), add to .claude/settings.json or ~/.claude/settings.json"
   ],
 
   "_OPTION_A_HTTP_paste_this_into_claude_desktop_config": {
@@ -24,20 +29,21 @@
   "_OPTION_B_stdio_paste_this_into_claude_desktop_config": {
     "mcpServers": {
       "local-repo-db": {
-        "command": "python",
+        "command": "C:\\Users\\chandresh.zinzala\\workspace\\mcp\\files (1)\\mcp-server\\venv\\Scripts\\python.exe",
         "args": ["-m", "src.server"],
-        "cwd": "/ABSOLUTE/PATH/TO/mcp-server",
+        "cwd": "C:\\Users\\chandresh.zinzala\\workspace\\mcp\\files (1)\\mcp-server",
         "env": {
           "MCP_TRANSPORT":         "stdio",
-          "REPO_ROOT":             "/absolute/path/to/your/repo",
+          "REPO_ROOT":             "C:\\Users\\chandresh.zinzala\\workspace\\Proact_Admin_Expense\\proact_frontend",
           "DB_TYPE":               "mysql",
           "DB_MAX_ROWS":           "500",
-          "MYSQL_HOST":            "your-remote-server.com",
+          "MYSQL_HOST":            "10.10.0.42",
           "MYSQL_PORT":            "3306",
-          "MYSQL_DB":              "your_database_name",
-          "MYSQL_USER":            "your_mysql_user",
-          "MYSQL_PASSWORD":        "your_mysql_password",
+          "MYSQL_DB":              "proact3",
+          "MYSQL_USER":            "developer",
+          "MYSQL_PASSWORD":        "D#v#l0p#r",
           "MYSQL_CONNECT_TIMEOUT": "10",
+          "MYSQL_CHARSET":         "utf8mb4",
           "MYSQL_SSL":             "false"
         }
       }
