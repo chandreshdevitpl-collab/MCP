@@ -8,12 +8,16 @@ import subprocess
 from pathlib import Path
 
 from fastmcp import FastMCP
+from .db_tools import _project_root
 
+def _repo_root() -> Path:
+    """Return the sandboxed repository root (the client project root)."""
+    return _project_root()
 
 def register_review_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
-    def get_staged_diff(repo_root: str) -> str:
+    def get_staged_diff() -> str:
         """
         Return the staged git diff (changes added with `git add`) for code review.
 
@@ -25,7 +29,7 @@ def register_review_tools(mcp: FastMCP) -> None:
             repo_root: Absolute path to the git repository root
                        (e.g. C:/Users/me/my-project or /home/user/my-project).
         """
-        root = Path(repo_root).resolve()
+        root = _repo_root()
 
         if not root.is_dir():
             return f"ERROR: Directory does not exist: {root}"
