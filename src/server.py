@@ -52,6 +52,7 @@ _load_env_file()
 
 from .repo_tools import register_repo_tools
 from .db_tools   import register_db_tools
+from .review_tools  import register_review_tools
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -73,6 +74,7 @@ mcp = FastMCP(
 
 register_repo_tools(mcp)
 register_db_tools(mcp)
+register_review_tools(mcp)
 
 # ---------------------------------------------------------------------------
 # Entry point
